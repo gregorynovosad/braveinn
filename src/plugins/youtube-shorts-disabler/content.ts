@@ -22,14 +22,16 @@ function disable(): void {
 }
 
 async function init(): Promise<void> {
-  const enabled = await getPluginEnabled(PLUGIN_ID);
-  if (enabled) enable();
+  // Register the toggle listener BEFORE the storage await so that any toggle
+  // message arriving during the async gap is not silently dropped.
   onPluginToggle(PLUGIN_ID, (newEnabled) => {
     newEnabled ? enable() : disable();
   });
+
+  const enabled = await getPluginEnabled(PLUGIN_ID);
+  if (enabled) enable();
 }
 
-// Guard prevents auto-init in the Vitest environment
 if (import.meta.env.MODE !== 'test') {
-  init();
+  init().catch(console.error);
 }

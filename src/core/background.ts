@@ -1,6 +1,5 @@
 import { pluginManifests } from '../plugins';
-
-const STORAGE_PREFIX = 'braveinn:plugin';
+import { STORAGE_PREFIX } from '../shared/constants';
 
 chrome.runtime.onInstalled.addListener(async ({ reason }) => {
   if (reason === 'install') {
@@ -22,23 +21,41 @@ chrome.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) =
     return;
   }
 
-  const { pluginId, enabled } = message as unknown as { pluginId: string; enabled: boolean };
+  const msg = message as Record<string, unknown>;
+
+  // Validate field types and that the plugin actually exists
+  if (
+    typeof msg.pluginId !== 'string' ||
+    typeof msg.enabled !== 'boolean' ||
+    !pluginManifests.some((m) => m.id === msg.pluginId)
+  ) {
+    sendResponse({ success: false, error: 'invalid payload' });
+    return;
+  }
+
+  const pluginId = msg.pluginId as string;
+  const enabled = msg.enabled as boolean;
   const key = `${STORAGE_PREFIX}:${pluginId}:enabled`;
 
-  chrome.storage.local.set({ [key]: enabled }).then(async () => {
-    // Find all tabs matching any plugin's host and forward the toggle
-    const tabs = await chrome.tabs.query({});
-    for (const tab of tabs) {
-      if (tab.id && tab.url?.includes('youtube.com')) {
-        chrome.tabs
-          .sendMessage(tab.id, { type: 'BRAVEINN_TOGGLE', pluginId, enabled })
-          .catch(() => {
-            // Tab may not have a content script (e.g. youtube.com/tv)
-          });
+  chrome.storage.local
+    .set({ [key]: enabled })
+    .then(async () => {
+      // Filter at query level — no JS-side URL filtering needed
+      const tabs = await chrome.tabs.query({ url: '*://*.youtube.com/*' });
+      for (const tab of tabs) {
+        if (tab.id) {
+          chrome.tabs
+            .sendMessage(tab.id, { type: 'BRAVEINN_TOGGLE', pluginId, enabled })
+            .catch(() => {
+              // Tab may not have a content script (e.g. youtube.com/tv)
+            });
+        }
       }
-    }
-    sendResponse({ success: true });
-  });
+      sendResponse({ success: true });
+    })
+    .catch((err: Error) => {
+      sendResponse({ success: false, error: err.message });
+    });
 
   return true; // keep channel open for async response
 });

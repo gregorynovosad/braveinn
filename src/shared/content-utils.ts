@@ -1,4 +1,4 @@
-const STORAGE_PREFIX = 'braveinn:plugin';
+import { STORAGE_PREFIX } from './constants';
 
 export async function getPluginEnabled(pluginId: string): Promise<boolean> {
   const key = `${STORAGE_PREFIX}:${pluginId}:enabled`;
@@ -6,8 +6,13 @@ export async function getPluginEnabled(pluginId: string): Promise<boolean> {
   return result[key] !== false; // default true when not yet set
 }
 
-export function onPluginToggle(pluginId: string, callback: (enabled: boolean) => void): void {
-  chrome.runtime.onMessage.addListener((message: unknown) => {
+// Returns a cleanup function that removes the listener — call it to prevent accumulation
+// on hot-reload or dynamic content-script re-injection.
+export function onPluginToggle(
+  pluginId: string,
+  callback: (enabled: boolean) => void,
+): () => void {
+  const listener = (message: unknown): void => {
     if (
       message !== null &&
       typeof message === 'object' &&
@@ -15,9 +20,12 @@ export function onPluginToggle(pluginId: string, callback: (enabled: boolean) =>
       message.type === 'BRAVEINN_TOGGLE' &&
       'pluginId' in message &&
       message.pluginId === pluginId &&
-      'enabled' in message
+      'enabled' in message &&
+      typeof (message as Record<string, unknown>).enabled === 'boolean'
     ) {
-      callback(message.enabled as boolean);
+      callback((message as Record<string, unknown>).enabled as boolean);
     }
-  });
+  };
+  chrome.runtime.onMessage.addListener(listener);
+  return () => chrome.runtime.onMessage.removeListener(listener);
 }
