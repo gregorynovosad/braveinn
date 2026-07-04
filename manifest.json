@@ -3,9 +3,18 @@
   "name": "BraveInn",
   "version": "0.1.0",
   "description": "Personal plugin host for Brave",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
   "action": {
     "default_popup": "src/core/popup/index.html",
-    "default_title": "BraveInn"
+    "default_title": "BraveInn",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "48": "icons/icon-48.png"
+    }
   },
   "background": {
     "service_worker": "src/core/background.ts",
