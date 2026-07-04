@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "BraveInn",
+  "version": "0.1.0",
+  "description": "Personal plugin host for Brave",
+  "action": {
+    "default_popup": "src/core/popup/index.html",
+    "default_title": "BraveInn"
+  },
+  "background": {
+    "service_worker": "src/core/background.ts",
+    "type": "module"
+  },
+  "permissions": ["storage", "scripting", "tabs"],
+  "host_permissions": ["*://*.youtube.com/*"],
+  "content_scripts": [
+    {
+      "matches": ["*://*.youtube.com/*"],
+      "js": ["src/plugins/youtube-shorts-disabler/content.ts"],
+      "run_at": "document_idle"
+    }
+  ]
+}
